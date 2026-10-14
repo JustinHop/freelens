@@ -43,8 +43,21 @@ const NonInjectedContainerCharts = observer(
     if (!selectedContainerMetrics || isMetricsEmpty(selectedContainerMetrics)) return <NoMetrics />;
 
     const { chartCapacityColor } = activeTheme.get().colors;
-    const { cpuUsage, cpuRequests, cpuLimits, memoryUsage, memoryRequests, memoryLimits, fsUsage, fsWrites, fsReads } =
-      mapValues(selectedContainerMetrics, (metric) => normalizeMetrics(metric).data.result[0].values);
+    const {
+      cpuUsage,
+      cpuRequests,
+      cpuLimits,
+      memoryUsage,
+      memoryRequests,
+      memoryLimits,
+      gpuUsage = [],
+      gpuMemoryUsage = [],
+      gpuRequests = [],
+      gpuLimits = [],
+      fsUsage,
+      fsWrites,
+      fsReads,
+    } = mapValues(selectedContainerMetrics, (metric) => normalizeMetrics(metric).data.result[0].values);
 
     const datasets: Partial<Record<MetricsTab, ChartDataSets[]>> = {
       CPU: [
@@ -91,6 +104,38 @@ const NonInjectedContainerCharts = observer(
           tooltip: `Memory limits`,
           borderColor: chartCapacityColor,
           data: memoryLimits.map(([x, y]) => ({ x: x * 1000, y })),
+        },
+      ],
+      GPU: [
+        {
+          id: "gpuUsage",
+          label: `Usage`,
+          tooltip: `GPU usage`,
+          borderColor: "#76b900",
+          data: gpuUsage.map(([x, y]) => ({ x: x * 1000, y })),
+        },
+        {
+          id: "gpuRequests",
+          label: `Requests`,
+          tooltip: `GPU requests`,
+          borderColor: "#30b24d",
+          data: gpuRequests.map(([x, y]) => ({ x: x * 1000, y })),
+        },
+        {
+          id: "gpuLimits",
+          label: `Limits`,
+          tooltip: `GPU limits`,
+          borderColor: chartCapacityColor,
+          data: gpuLimits.map(([x, y]) => ({ x: x * 1000, y })),
+        },
+      ],
+      "GPU Memory": [
+        {
+          id: "gpuMemoryUsage",
+          label: `Usage`,
+          tooltip: `GPU memory usage`,
+          borderColor: "#f5a623",
+          data: gpuMemoryUsage.map(([x, y]) => ({ x: x * 1000, y })),
         },
       ],
       Filesystem: [
