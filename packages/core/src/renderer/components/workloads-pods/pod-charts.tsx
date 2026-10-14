@@ -15,12 +15,24 @@ import selectedMetricsTimeRangeInjectable from "../cluster/overview/selected-met
 import { ResourceMetricsContext } from "../resource-metrics";
 import { NoMetrics } from "../resource-metrics/no-metrics";
 
+import type { MetricData } from "../../../common/k8s-api/endpoints/metrics.api";
 import type { ChartDataSets } from "../chart";
 import type { MetricsTab } from "../chart/options";
 import type { SelectedMetricsTimeRange } from "../cluster/overview/selected-metrics-time-range.injectable";
 import type { AtLeastOneMetricTab } from "../resource-metrics";
 
 export const podMetricTabs: AtLeastOneMetricTab = ["CPU", "Memory", "Network", "Filesystem"];
+
+export const podGpuMetricTabs: MetricsTab[] = ["GPU", "GPU Memory"];
+
+/**
+ * The pod metric tabs, with the GPU tabs added when the loaded metrics hold GPU series.
+ */
+export function podMetricTabsFor(metrics: { gpuUsage?: MetricData } | null | undefined): AtLeastOneMetricTab {
+  const hasGpuMetrics = metrics?.gpuUsage && !isMetricsEmpty({ gpuUsage: metrics.gpuUsage });
+
+  return hasGpuMetrics ? [...podMetricTabs, ...podGpuMetricTabs] : podMetricTabs;
+}
 
 interface Dependencies {
   selectedMetricsTimeRange: SelectedMetricsTimeRange;
@@ -38,10 +50,17 @@ const NonInjectedPodCharts = observer(({ selectedMetricsTimeRange }: Dependencie
   if (isMetricsEmpty(metrics)) return <NoMetrics />;
 
   const id = object.getId();
-  const { cpuUsage, memoryUsage, fsUsage, fsWrites, fsReads, networkReceive, networkTransmit } = mapValues(
-    metrics,
-    (metric) => normalizeMetrics(metric).data.result[0].values,
-  );
+  const {
+    cpuUsage,
+    memoryUsage,
+    gpuUsage = [],
+    gpuMemoryUsage = [],
+    fsUsage,
+    fsWrites,
+    fsReads,
+    networkReceive,
+    networkTransmit,
+  } = mapValues(metrics, (metric) => normalizeMetrics(metric).data.result[0].values);
 
   const datasets: Partial<Record<MetricsTab, ChartDataSets[]>> = {
     CPU: [
@@ -60,6 +79,24 @@ const NonInjectedPodCharts = observer(({ selectedMetricsTimeRange }: Dependencie
         tooltip: `Container memory usage`,
         borderColor: "#c93dce",
         data: memoryUsage.map(([x, y]) => ({ x: x * 1000, y })),
+      },
+    ],
+    GPU: [
+      {
+        id: `${id}-gpuUsage`,
+        label: `Usage`,
+        tooltip: `Container GPU usage`,
+        borderColor: "#76b900",
+        data: gpuUsage.map(([x, y]) => ({ x: x * 1000, y })),
+      },
+    ],
+    "GPU Memory": [
+      {
+        id: `${id}-gpuMemoryUsage`,
+        label: `Usage`,
+        tooltip: `Container GPU memory usage`,
+        borderColor: "#f5a623",
+        data: gpuMemoryUsage.map(([x, y]) => ({ x: x * 1000, y })),
       },
     ],
     Network: [

@@ -7,7 +7,7 @@
 import { withInjectables } from "@ogre-tools/injectable-react";
 import { observer } from "mobx-react-lite";
 import { TimeRangedResourceMetrics } from "../resource-metrics";
-import { PodCharts, podMetricTabs } from "../workloads-pods/pod-charts";
+import { PodCharts, podMetricTabsFor } from "../workloads-pods/pod-charts";
 import jobMetricsInjectable from "./metrics.injectable";
 
 import type { Job } from "@freelensapp/kube-object";
@@ -22,7 +22,7 @@ interface Dependencies {
 
 const NonInjectedJobMetricsDetailsComponent = observer(
   ({ object, metrics }: KubeObjectDetailsProps<Job> & Dependencies) => (
-    <TimeRangedResourceMetrics tabs={podMetricTabs} object={object} metrics={metrics}>
+    <TimeRangedResourceMetrics tabs={podMetricTabsFor(metrics.value.get())} object={object} metrics={metrics}>
       <PodCharts />
     </TimeRangedResourceMetrics>
   ),

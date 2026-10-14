@@ -22,7 +22,17 @@ const podMetricsInjectable = createTimeRangedMetricsInjectable({
       start,
       end,
       range,
-      metrics: ["cpuUsage", "memoryUsage", "fsUsage", "fsWrites", "fsReads", "networkReceive", "networkTransmit"],
+      metrics: [
+        "cpuUsage",
+        "memoryUsage",
+        "gpuUsage",
+        "gpuMemoryUsage",
+        "fsUsage",
+        "fsWrites",
+        "fsReads",
+        "networkReceive",
+        "networkTransmit",
+      ],
     }),
 });
 

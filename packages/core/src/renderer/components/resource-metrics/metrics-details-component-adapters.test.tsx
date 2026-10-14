@@ -121,6 +121,16 @@ const container = {
   name: "pod-container",
 } as Container;
 
+const gpuContainer = {
+  name: "gpu-container",
+  resources: { limits: { "nvidia.com/gpu": "1" } },
+} as unknown as Container;
+
+const gpuRequestContainer = {
+  name: "gpu-request-container",
+  resources: { requests: { "nvidia.com/gpu": "1" } },
+} as unknown as Container;
+
 const replicaSet = {
   getId: () => "replica-set-id",
   getName: () => "replica-set-name",
@@ -223,6 +233,28 @@ const adapterCases: AdapterCase[] = [
     expectedParams: {
       pod,
       container,
+    },
+  },
+  {
+    name: "pod container details with a GPU limit",
+    injectable: podContainerMetricsInjectable,
+    renderElement: () => <PodDetailsContainerMetrics pod={pod} container={gpuContainer} />,
+    expectedObject: pod,
+    expectedTabs: ["CPU", "Memory", "Filesystem", "GPU", "GPU Memory"] as AtLeastOneMetricTab,
+    expectedParams: {
+      pod,
+      container: gpuContainer,
+    },
+  },
+  {
+    name: "pod container details with a GPU request",
+    injectable: podContainerMetricsInjectable,
+    renderElement: () => <PodDetailsContainerMetrics pod={pod} container={gpuRequestContainer} />,
+    expectedObject: pod,
+    expectedTabs: ["CPU", "Memory", "Filesystem", "GPU", "GPU Memory"] as AtLeastOneMetricTab,
+    expectedParams: {
+      pod,
+      container: gpuRequestContainer,
     },
   },
   {
