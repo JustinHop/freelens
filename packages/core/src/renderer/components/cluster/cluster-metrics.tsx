@@ -50,16 +50,23 @@ const NonInjectedClusterMetrics = observer((props: Dependencies) => {
     isPending && currentRangeKey !== lastResolvedRangeKeyRef.current ? undefined : clusterOverviewMetrics.value.get();
   const { start: minTime, end: maxTime } = selectedMetricsTimeRange.timestamps.get();
   const [plugins] = useState([new ZebraStripesPlugin()]);
-  const { memoryCapacity, cpuCapacity } = getMetricLastPoints(visibleMetrics ?? {});
-  const metricType = selectedMetricsType.value.get();
+  const { memoryCapacity, cpuCapacity, gpuCapacity, gpuMemoryCapacity } = getMetricLastPoints(visibleMetrics ?? {});
+  const hasGPUMetrics = typeof gpuCapacity === "number" && gpuCapacity > 0;
+  const selectedType = selectedMetricsType.value.get();
+  // A GPU selection kept from another cluster falls back to CPU.
+  const metricType = !hasGPUMetrics && (selectedType === "gpu" || selectedType === "gpuMemory") ? "cpu" : selectedType;
   const metricNodeRole = selectedNodeRoleForMetrics.value.get();
   const hasCPUMetrics = normalizeMetrics(visibleMetrics?.cpuUsage).data.result[0].values.length > 0;
   const hasMemoryMetrics = normalizeMetrics(visibleMetrics?.memoryUsage).data.result[0].values.length > 0;
-  const metricValues =
-    metricType === "cpu"
-      ? normalizeMetrics(visibleMetrics?.cpuUsage).data.result[0].values
-      : normalizeMetrics(visibleMetrics?.memoryUsage).data.result[0].values;
-  const colors = { cpu: "#00a7a0", memory: "#C93DCE" };
+  const usageMetrics = {
+    cpu: visibleMetrics?.cpuUsage,
+    memory: visibleMetrics?.memoryUsage,
+    gpu: visibleMetrics?.gpuUsage,
+    gpuMemory: visibleMetrics?.gpuMemoryUsage,
+  };
+  const metricValues = normalizeMetrics(usageMetrics[metricType]).data.result[0].values;
+  const colors = { cpu: "#00a7a0", memory: "#C93DCE", gpu: "#76b900", gpuMemory: "#f5a623" };
+  const usageLabels = { cpu: "CPU usage", memory: "MEMORY usage", gpu: "GPU usage", gpuMemory: "GPU MEMORY usage" };
   const data = metricValues.map((value) => ({
     x: value[0] * 1000, // Convert Unix seconds to milliseconds for Chart.js
     y: parseFloat(value[1]).toFixed(3),
@@ -68,7 +75,7 @@ const NonInjectedClusterMetrics = observer((props: Dependencies) => {
   const datasets = [
     {
       id: metricType + metricNodeRole,
-      label: `${metricType.toUpperCase()} usage`,
+      label: usageLabels[metricType],
       borderColor: colors[metricType],
       data,
     },
@@ -123,14 +130,32 @@ const NonInjectedClusterMetrics = observer((props: Dependencies) => {
       },
     },
   };
-  const options = metricType === "cpu" ? cpuOptions : memoryOptions;
+  const gpuOptions: ChartOptions = {
+    ...cpuOptions,
+    scales: { y: { suggestedMax: gpuCapacity, ticks: { callback: (value) => value } } },
+  };
+  const gpuMemoryOptions: ChartOptions = {
+    ...memoryOptions,
+    scales: {
+      y: {
+        suggestedMax: gpuMemoryCapacity,
+        ticks: { callback: (value) => (!value ? 0 : bytesToUnits(parseInt(`${value}`))) },
+      },
+    },
+  };
+  const options = { cpu: cpuOptions, memory: memoryOptions, gpu: gpuOptions, gpuMemory: gpuMemoryOptions }[metricType];
 
   const renderMetrics = () => {
     if (!metricValues.length && isPending) {
       return <Spinner center />;
     }
 
-    const selectedCapacity = metricType === "cpu" ? cpuCapacity : memoryCapacity;
+    const selectedCapacity = {
+      cpu: cpuCapacity,
+      memory: memoryCapacity,
+      gpu: gpuCapacity,
+      gpuMemory: gpuMemoryCapacity,
+    }[metricType];
 
     if (!selectedCapacity) {
       return <ClusterNoMetrics className={styles.empty} />;
@@ -152,7 +177,11 @@ const NonInjectedClusterMetrics = observer((props: Dependencies) => {
 
   return (
     <div className={cssNames(styles.ClusterMetrics, "flex flex-col")}>
-      <ClusterMetricSwitchers hasCPUMetrics={hasCPUMetrics} hasMemoryMetrics={hasMemoryMetrics} />
+      <ClusterMetricSwitchers
+        hasCPUMetrics={hasCPUMetrics}
+        hasMemoryMetrics={hasMemoryMetrics}
+        hasGPUMetrics={hasGPUMetrics}
+      />
       {renderMetrics()}
     </div>
   );

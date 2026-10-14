@@ -170,4 +170,119 @@ describe("ClusterPieCharts", () => {
     expect(screen.queryByTestId("cluster-pie-chart")).not.toBeInTheDocument();
     expect(screen.getByTestId("spinner")).toBeInTheDocument();
   });
+
+  describe("GPU pies", () => {
+    const renderWithMetrics = (metrics: Record<string, MetricData>) => {
+      const di = getDiForUnitTesting();
+      const render = renderFor(di);
+
+      di.override(activeThemeInjectable, () =>
+        computed(
+          () =>
+            ({
+              colors: {
+                pieChartDefaultColor: "#123456",
+              },
+            }) as never,
+        ),
+      );
+      di.override(
+        selectedMetricsTimeRangeInjectable,
+        () =>
+          ({
+            value: computed(() => ({ duration: null, customStart: 100, customEnd: 200 })),
+          }) as never,
+      );
+      di.override(
+        clusterOverviewMetricsInjectable,
+        () =>
+          ({
+            pending: computed(() => false),
+            value: computed(() => metrics),
+          }) as never,
+      );
+      di.override(selectedNodeRoleForMetricsInjectable, () => ({
+        value: computed(() => "worker" as const),
+        set: vi.fn(),
+        nodes: computed(() => [{ getName: () => "worker-1" }] as never),
+        hasMasterNodes: computed(() => true),
+        hasWorkerNodes: computed(() => true),
+      }));
+
+      render(<ClusterPieCharts />);
+    };
+    const cpuMemoryAndPodMetrics = {
+      cpuUsage: metricWithValue("1"),
+      cpuRequests: metricWithValue("2"),
+      cpuAllocatableCapacity: metricWithValue("3"),
+      cpuCapacity: metricWithValue("4"),
+      memoryUsage: metricWithValue("5"),
+      memoryRequests: metricWithValue("6"),
+      memoryAllocatableCapacity: metricWithValue("7"),
+      memoryCapacity: metricWithValue("8"),
+      podUsage: metricWithValue("9"),
+      podAllocatableCapacity: metricWithValue("10"),
+      podCapacity: metricWithValue("11"),
+    };
+    const renderedTitles = () => pieChartMock.mock.calls.map(([props]) => (props as { title: string }).title);
+
+    it("renders only the CPU, memory and pods pies when the cluster has no GPUs", () => {
+      renderWithMetrics(cpuMemoryAndPodMetrics);
+
+      expect(renderedTitles()).toEqual(["CPU", "Memory", "Pods"]);
+    });
+
+    it("renders no GPU pies when the cluster reports zero GPU capacity", () => {
+      renderWithMetrics({
+        ...cpuMemoryAndPodMetrics,
+        gpuAllocatableCapacity: metricWithValue("0"),
+        gpuCapacity: metricWithValue("0"),
+      });
+
+      expect(renderedTitles()).toEqual(["CPU", "Memory", "Pods"]);
+    });
+
+    it("renders the GPU and GPU memory pies when the cluster reports GPU capacity", () => {
+      renderWithMetrics({
+        ...cpuMemoryAndPodMetrics,
+        gpuUsage: metricWithValue("1"),
+        gpuRequests: metricWithValue("2"),
+        gpuLimits: metricWithValue("3"),
+        gpuAllocatableCapacity: metricWithValue("4"),
+        gpuCapacity: metricWithValue("4"),
+        gpuMemoryUsage: metricWithValue("1024"),
+        gpuMemoryCapacity: metricWithValue("4096"),
+      });
+
+      expect(screen.getAllByTestId("cluster-pie-chart")).toHaveLength(5);
+      expect(renderedTitles()).toEqual(["CPU", "Memory", "GPU", "GPU Memory", "Pods"]);
+
+      const gpuPie = pieChartMock.mock.calls.map(([props]) => props).find((props) => props.title === "GPU");
+      const gpuMemoryPie = pieChartMock.mock.calls
+        .map(([props]) => props)
+        .find((props) => props.title === "GPU Memory");
+
+      expect(gpuPie.data.datasets.map((dataset: { id: string }) => dataset.id)).toEqual([
+        "gpuUsage",
+        "gpuRequests",
+        "gpuLimits",
+      ]);
+      expect(gpuPie.data.datasets[0].data).toEqual([1, 3]);
+      expect(gpuMemoryPie.data.datasets.map((dataset: { id: string }) => dataset.id)).toEqual(["gpuMemoryUsage"]);
+      expect(gpuMemoryPie.data.datasets[0].data).toEqual([1024, 3072]);
+      expect(screen.queryByText("Specified limits are higher than node capacity!")).not.toBeInTheDocument();
+    });
+
+    it("warns when the GPU limits are higher than the allocatable GPU capacity", () => {
+      renderWithMetrics({
+        ...cpuMemoryAndPodMetrics,
+        gpuLimits: metricWithValue("8"),
+        gpuAllocatableCapacity: metricWithValue("4"),
+        gpuCapacity: metricWithValue("4"),
+      });
+
+      expect(renderedTitles()).toEqual(["CPU", "Memory", "GPU", "Pods"]);
+      expect(screen.getByText("Specified limits are higher than node capacity!")).toBeInTheDocument();
+    });
+  });
 });

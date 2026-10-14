@@ -7,7 +7,7 @@
 import { getInjectable } from "@ogre-tools/injectable";
 import createStorageInjectable from "../../../utils/create-storage/create-storage.injectable";
 
-export type MetricType = "memory" | "cpu";
+export type MetricType = "memory" | "cpu" | "gpu" | "gpuMemory";
 export type MetricNodeRole = "master" | "worker";
 
 export interface ClusterOverviewStorageState {

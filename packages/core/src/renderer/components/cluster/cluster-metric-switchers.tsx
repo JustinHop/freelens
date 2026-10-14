@@ -23,6 +23,7 @@ interface Dependencies {
 interface ClusterMetricSwitchersProps {
   hasCPUMetrics: boolean;
   hasMemoryMetrics: boolean;
+  hasGPUMetrics: boolean;
 }
 
 const NonInjectedClusterMetricSwitchers = observer(
@@ -31,35 +32,44 @@ const NonInjectedClusterMetricSwitchers = observer(
     selectedNodeRoleForMetrics,
     hasCPUMetrics,
     hasMemoryMetrics,
-  }: Dependencies & ClusterMetricSwitchersProps) => (
-    <div className={`flex gap-2 ${styles.container}`}>
-      <div className="grow shrink-0 basis-0">
-        <RadioGroup
-          asButtons
-          className="RadioGroup flex gap-2"
-          value={selectedNodeRoleForMetrics.value.get()}
-          onChange={selectedNodeRoleForMetrics.set}
-        >
-          <Radio label="Master" value="master" disabled={!selectedNodeRoleForMetrics.hasMasterNodes.get()} />
-          <Radio label="Worker" value="worker" disabled={!selectedNodeRoleForMetrics.hasWorkerNodes.get()} />
-        </RadioGroup>
+    hasGPUMetrics,
+  }: Dependencies & ClusterMetricSwitchersProps) => {
+    const storedMetricType = selectedMetricsType.value.get();
+    // A GPU selection kept from another cluster is shown as CPU, as the chart does.
+    const metricType =
+      !hasGPUMetrics && (storedMetricType === "gpu" || storedMetricType === "gpuMemory") ? "cpu" : storedMetricType;
+    const metricRadios = [
+      <Radio key="cpu" label="CPU" value="cpu" disabled={!hasCPUMetrics} />,
+      <Radio key="memory" label="Memory" value="memory" disabled={!hasMemoryMetrics} />,
+      ...(hasGPUMetrics
+        ? [<Radio key="gpu" label="GPU" value="gpu" />, <Radio key="gpuMemory" label="GPU Memory" value="gpuMemory" />]
+        : []),
+    ];
+
+    return (
+      <div className={`flex gap-2 ${styles.container}`}>
+        <div className="grow shrink-0 basis-0">
+          <RadioGroup
+            asButtons
+            className="RadioGroup flex gap-2"
+            value={selectedNodeRoleForMetrics.value.get()}
+            onChange={selectedNodeRoleForMetrics.set}
+          >
+            <Radio label="Master" value="master" disabled={!selectedNodeRoleForMetrics.hasMasterNodes.get()} />
+            <Radio label="Worker" value="worker" disabled={!selectedNodeRoleForMetrics.hasWorkerNodes.get()} />
+          </RadioGroup>
+        </div>
+        <div className={styles.timeRangeBox}>
+          <MetricsTimeRangeSelector />
+        </div>
+        <div className={`grow shrink-0 basis-0 ${styles.metricTypeBox}`}>
+          <RadioGroup asButtons className="RadioGroup flex gap-2" value={metricType} onChange={selectedMetricsType.set}>
+            {metricRadios}
+          </RadioGroup>
+        </div>
       </div>
-      <div className={styles.timeRangeBox}>
-        <MetricsTimeRangeSelector />
-      </div>
-      <div className={`grow shrink-0 basis-0 ${styles.metricTypeBox}`}>
-        <RadioGroup
-          asButtons
-          className="RadioGroup flex gap-2"
-          value={selectedMetricsType.value.get()}
-          onChange={selectedMetricsType.set}
-        >
-          <Radio label="CPU" value="cpu" disabled={!hasCPUMetrics} />
-          <Radio label="Memory" value="memory" disabled={!hasMemoryMetrics} />
-        </RadioGroup>
-      </div>
-    </div>
-  ),
+    );
+  },
 );
 
 export const ClusterMetricSwitchers = withInjectables<Dependencies, ClusterMetricSwitchersProps>(

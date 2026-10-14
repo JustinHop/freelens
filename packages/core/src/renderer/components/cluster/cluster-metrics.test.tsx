@@ -223,4 +223,106 @@ describe("ClusterMetrics", () => {
       }),
     );
   });
+
+  describe("GPU metrics", () => {
+    const renderWithMetrics = (
+      metricType: "cpu" | "memory" | "gpu" | "gpuMemory",
+      metrics: Record<string, MetricData | undefined>,
+    ) => {
+      const di = getDiForUnitTesting();
+      const render = renderFor(di);
+
+      di.override(
+        selectedMetricsTimeRangeInjectable,
+        () =>
+          ({
+            value: computed(() => ({ duration: 300, customStart: undefined, customEnd: undefined })),
+            timestamps: computed(() => ({ start: 10, end: 310, range: 300 })),
+          }) as never,
+      );
+      di.override(
+        clusterOverviewMetricsInjectable,
+        () =>
+          ({
+            pending: computed(() => false),
+            value: computed(() => metrics),
+          }) as never,
+      );
+      di.override(selectedMetricsTypeInjectable, () => ({
+        value: computed(() => metricType),
+        set: vi.fn(),
+      }));
+      di.override(selectedNodeRoleForMetricsInjectable, () => ({
+        value: computed(() => "worker" as const),
+        set: vi.fn(),
+        nodes: computed(() => [{ getName: () => "worker-1" }] as never),
+        hasMasterNodes: computed(() => true),
+        hasWorkerNodes: computed(() => true),
+      }));
+
+      render(<ClusterMetrics />);
+    };
+    const cpuAndMemoryMetrics = {
+      cpuUsage: metricWithValue("1"),
+      cpuCapacity: metricWithValue("10"),
+      memoryUsage: metricWithValue("2"),
+      memoryCapacity: metricWithValue("20"),
+    };
+
+    it("shows no GPU option and falls back to CPU when the cluster has no GPU metrics", () => {
+      renderWithMetrics("gpu", cpuAndMemoryMetrics);
+
+      expect(switchersMock).toHaveBeenCalledWith(expect.objectContaining({ hasGPUMetrics: false }));
+      expect(barChartMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "worker-cpu",
+          options: expect.objectContaining({
+            scales: { y: expect.objectContaining({ suggestedMax: 10 }) },
+          }),
+          data: { datasets: [expect.objectContaining({ id: "cpuworker", borderColor: "#00a7a0" })] },
+        }),
+      );
+    });
+
+    it("shows the GPU usage chart against the GPU capacity when the cluster has GPUs", () => {
+      renderWithMetrics("gpu", {
+        ...cpuAndMemoryMetrics,
+        gpuUsage: metricWithValue("1"),
+        gpuCapacity: metricWithValue("4"),
+        gpuMemoryUsage: metricWithValue("1024"),
+        gpuMemoryCapacity: metricWithValue("4096"),
+      });
+
+      expect(switchersMock).toHaveBeenCalledWith(expect.objectContaining({ hasGPUMetrics: true }));
+      expect(barChartMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "worker-gpu",
+          options: expect.objectContaining({
+            scales: { y: expect.objectContaining({ suggestedMax: 4 }) },
+          }),
+          data: { datasets: [expect.objectContaining({ id: "gpuworker", borderColor: "#76b900" })] },
+        }),
+      );
+    });
+
+    it("shows the GPU memory usage chart against the GPU memory capacity when the cluster has GPUs", () => {
+      renderWithMetrics("gpuMemory", {
+        ...cpuAndMemoryMetrics,
+        gpuUsage: metricWithValue("1"),
+        gpuCapacity: metricWithValue("4"),
+        gpuMemoryUsage: metricWithValue("1024"),
+        gpuMemoryCapacity: metricWithValue("4096"),
+      });
+
+      expect(barChartMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "worker-gpuMemory",
+          options: expect.objectContaining({
+            scales: { y: expect.objectContaining({ suggestedMax: 4096 }) },
+          }),
+          data: { datasets: [expect.objectContaining({ id: "gpuMemoryworker", borderColor: "#f5a623" })] },
+        }),
+      );
+    });
+  });
 });
