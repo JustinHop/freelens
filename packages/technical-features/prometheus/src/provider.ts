@@ -153,8 +153,11 @@ export function nodeFilterAdditive(opts: Record<string, string>, label: string):
  * labels the renderer matches on.
  */
 export function dcgmPodQuery(metric: string, opts: Record<string, string>): string {
-  const labels = opts.selector.split(",").map((s) => s.trim());
-  const plain = `sum(${metric}{pod=~"${opts.pods}",namespace="${opts.namespace}"}) by (${opts.selector})`;
+  const labels = (opts.selector ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const plain = `sum(${metric}{pod=~"${opts.pods}",namespace="${opts.namespace}"}) by (${labels.join(", ")})`;
   const exported = `sum(${metric}{exported_pod=~"${opts.pods}",exported_namespace="${opts.namespace}"}) by (${labels.map((l) => `exported_${l}`).join(", ")})`;
   const renamed = labels.reduce(
     (expr, label) => `label_replace(${expr}, "${label}", "$1", "exported_${label}", "(.*)")`,
