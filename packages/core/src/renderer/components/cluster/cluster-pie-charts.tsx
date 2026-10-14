@@ -66,6 +66,13 @@ const renderCharts = (defaultColor: string, lastPoints: Partial<Record<keyof Clu
     podUsage,
     podAllocatableCapacity,
     podCapacity,
+    gpuUsage,
+    gpuRequests,
+    gpuLimits,
+    gpuAllocatableCapacity,
+    gpuCapacity,
+    gpuMemoryUsage,
+    gpuMemoryCapacity,
   } = lastPoints;
 
   if (
@@ -139,6 +146,52 @@ const renderCharts = (defaultColor: string, lastPoints: Partial<Record<keyof Clu
       `Capacity: ${bytesToUnits(memoryCapacity)}`,
     ],
   };
+  const hasGPU = typeof gpuAllocatableCapacity === "number" && gpuAllocatableCapacity > 0;
+  const gpuData: PieChartData | undefined = hasGPU
+    ? {
+        datasets: [
+          {
+            data: [gpuUsage, gpuUsage ? gpuAllocatableCapacity - gpuUsage : 1],
+            backgroundColor: ["#76b900", defaultColor],
+            id: "gpuUsage",
+            label: "Usage",
+          },
+          {
+            data: [gpuRequests, gpuRequests ? gpuAllocatableCapacity - gpuRequests : 1],
+            backgroundColor: ["#4caf50", defaultColor],
+            id: "gpuRequests",
+            label: "Requests",
+          },
+          {
+            data: [gpuLimits, Math.max(0, gpuAllocatableCapacity - (gpuLimits ?? gpuAllocatableCapacity))],
+            backgroundColor: ["#00a7a0", defaultColor],
+            id: "gpuLimits",
+            label: "Limits",
+          },
+        ],
+        labels: createLabels([
+          ["Usage", gpuUsage],
+          ["Requests", gpuRequests],
+          ["Limits", gpuLimits],
+          ["Allocatable Capacity", gpuAllocatableCapacity],
+          ["Capacity", gpuCapacity],
+        ]),
+      }
+    : undefined;
+  const gpuMemoryData: PieChartData | undefined =
+    hasGPU && typeof gpuMemoryCapacity === "number" && gpuMemoryCapacity > 0
+      ? {
+          datasets: [
+            {
+              data: [gpuMemoryUsage, gpuMemoryUsage ? gpuMemoryCapacity - gpuMemoryUsage : 1],
+              backgroundColor: ["#f5a623", defaultColor],
+              id: "gpuMemoryUsage",
+              label: "Usage",
+            },
+          ],
+          labels: [`Usage: ${checkedBytesToUnits(gpuMemoryUsage)}`, `Capacity: ${bytesToUnits(gpuMemoryCapacity)}`],
+        }
+      : undefined;
   const podsData: PieChartData = {
     datasets: [
       {
@@ -170,6 +223,21 @@ const renderCharts = (defaultColor: string, lastPoints: Partial<Record<keyof Clu
         />
         {(memoryLimits ?? memoryAllocatableCapacity) > memoryAllocatableCapacity && renderLimitWarning()}
       </div>
+      {hasGPU && gpuData && (
+        <div className={cssNames(styles.chart, "flex flex-col items-center grow shrink-0 basis-0")}>
+          <PieChart
+            data={gpuData}
+            title="GPU"
+            legendColors={["#76b900", "#4caf50", "#00a7a0", "#032b4d", defaultColor]}
+          />
+          {(gpuLimits ?? gpuAllocatableCapacity) > gpuAllocatableCapacity && renderLimitWarning()}
+        </div>
+      )}
+      {gpuMemoryData && (
+        <div className={cssNames(styles.chart, "flex flex-col items-center grow shrink-0 basis-0")}>
+          <PieChart data={gpuMemoryData} title="GPU Memory" legendColors={["#f5a623", defaultColor]} />
+        </div>
+      )}
       <div className={cssNames(styles.chart, "flex flex-col items-center grow shrink-0 basis-0")}>
         <PieChart data={podsData} title="Pods" legendColors={["#4caf50", defaultColor]} />
       </div>
