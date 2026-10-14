@@ -57,8 +57,9 @@ describe("DCGM pod queries in the prometheus providers", () => {
           expect(query, message).not.toContain("undefined");
           expect(query, message).not.toContain("by (exported_)");
           expect(query, message).not.toContain("label_replace");
-          expect(query, message).toContain(`sum(${dcgmMetric}{pod=~"web-.*",namespace="apps"`);
-          expect(query, message).toContain(`}) by () or sum(${dcgmMetric}{exported_pod=~"web-.*"`);
+          expect(query, message).toContain(
+            `sum(${dcgmMetric}{pod=~"web-.*",namespace="apps",exported_pod=""}) by () or sum(${dcgmMetric}{exported_pod=~"web-.*"`,
+          );
           expect(query, message).toContain(`{exported_pod=~"web-.*",exported_namespace="apps"}) by ()`);
         }
       });
@@ -98,8 +99,9 @@ describe("DCGM pod queries in the prometheus providers", () => {
           expect(query, message).not.toContain("undefined");
           expect(query, message).not.toContain("by (exported_)");
           expect(query, message).not.toContain(`, "",`);
-          expect(query, message).toContain(`sum(${dcgmMetric}{pod=~"web-.*",namespace="apps"`);
-          expect(query, message).toContain(`}) by (${selector}) or ${renamed(exported)}`);
+          expect(query, message).toContain(
+            `sum(${dcgmMetric}{pod=~"web-.*",namespace="apps",exported_pod=""}) by (${selector}) or ${renamed(exported)}`,
+          );
         }
       });
     });
