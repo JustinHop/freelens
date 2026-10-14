@@ -25,6 +25,7 @@ import { LineProgress } from "../line-progress";
 import { WithTooltip } from "../with-tooltip";
 import loadPodsFromAllNamespacesInjectable from "../workloads-pods/load-pods-from-all-namespaces.injectable";
 import podStoreInjectable from "../workloads-pods/store.injectable";
+import { hasGpu } from "./node-charts";
 import nodeStoreInjectable from "./store.injectable";
 
 import type { Node, Pod } from "@freelensapp/kube-object";
@@ -42,6 +43,8 @@ enum columnId {
   name = "name",
   cpu = "cpu",
   memory = "memory",
+  gpu = "gpu",
+  gpuMemory = "gpuMemory",
   disk = "disk",
   pods = "pods",
   instanceType = "instanceType",
@@ -263,8 +266,8 @@ class NonInjectedNodesRoute extends React.Component<Dependencies> {
       try {
         const metric = this.metrics?.[metricName];
         const result = metric?.data.result.find(
-          ({ metric: { node, instance, kubernetes_node } }) =>
-            nodeName === node || nodeName === instance || nodeName === kubernetes_node,
+          ({ metric: { node, instance, kubernetes_node, Hostname } }) =>
+            nodeName === node || nodeName === instance || nodeName === kubernetes_node || nodeName === Hostname,
         );
 
         return result ? parseFloat(result.values.slice(-1)[0][1]) : 0;
@@ -431,8 +434,39 @@ class NonInjectedNodesRoute extends React.Component<Dependencies> {
     });
   }
 
+  renderGpuUsage(node: Node) {
+    const [usage, capacity] = this.getLastMetricValues(node, ["gpuUsage", "gpuCapacity"]);
+    const tooltipLines = capacity
+      ? [`GPU: ${((usage * 100) / capacity).toFixed(2)}%, ${formatCores(usage)} of ${capacity} GPUs`]
+      : [];
+
+    return this.renderUsage({
+      node,
+      title: "GPU",
+      usage,
+      capacity,
+      tooltipLines,
+    });
+  }
+
+  renderGpuMemoryUsage(node: Node) {
+    const [usage, capacity] = this.getLastMetricValues(node, ["gpuMemoryUsage", "gpuMemoryCapacity"]);
+    const tooltipLines = capacity
+      ? [`GPU Memory: ${((usage * 100) / capacity).toFixed(2)}%, ${bytesToUnits(usage, { precision: 3 })}`]
+      : [];
+
+    return this.renderUsage({
+      node,
+      title: "GPU Memory",
+      usage,
+      capacity,
+      tooltipLines,
+    });
+  }
+
   render() {
     const { nodeStore, eventStore } = this.props;
+    const showGpu = nodeStore.items.some(hasGpu);
 
     return (
       <TabLayout>
@@ -449,6 +483,8 @@ class NonInjectedNodesRoute extends React.Component<Dependencies> {
             [columnId.name]: (node) => node.getName(),
             [columnId.cpu]: (node) => this.getLastMetricValues(node, ["cpuUsage"]),
             [columnId.memory]: (node) => this.getLastMetricValues(node, ["memoryUsage"]),
+            [columnId.gpu]: (node) => this.getLastMetricValues(node, ["gpuUsage"]),
+            [columnId.gpuMemory]: (node) => this.getLastMetricValues(node, ["gpuMemoryUsage"]),
             [columnId.disk]: (node) => this.getLastMetricValues(node, ["fsUsage"]),
             [columnId.pods]: (node) => this.getNonTerminatedPods(node).length,
             [columnId.instanceType]: (node) => getInstanceType(node),
@@ -478,6 +514,12 @@ class NonInjectedNodesRoute extends React.Component<Dependencies> {
             { title: "Name", className: "name", sortBy: columnId.name, id: columnId.name },
             { title: "CPU", className: "cpu", sortBy: columnId.cpu, id: columnId.cpu },
             { title: "Memory", className: "memory", sortBy: columnId.memory, id: columnId.memory },
+            ...(showGpu
+              ? [
+                  { title: "GPU", className: "gpu", sortBy: columnId.gpu, id: columnId.gpu },
+                  { title: "GPU Memory", className: "gpuMemory", sortBy: columnId.gpuMemory, id: columnId.gpuMemory },
+                ]
+              : []),
             { title: "Disk", className: "disk", sortBy: columnId.disk, id: columnId.disk },
             { title: "Pods", className: "pods", sortBy: columnId.pods, id: columnId.pods },
             {
@@ -519,6 +561,7 @@ class NonInjectedNodesRoute extends React.Component<Dependencies> {
               <WithTooltip>{node.getName()}</WithTooltip>,
               this.renderCpuUsage(node),
               this.renderMemoryUsage(node),
+              ...(showGpu ? [this.renderGpuUsage(node), this.renderGpuMemoryUsage(node)] : []),
               this.renderDiskUsage(node),
               this.renderPodsUsage(node),
               <WithTooltip>{getInstanceType(node)}</WithTooltip>,

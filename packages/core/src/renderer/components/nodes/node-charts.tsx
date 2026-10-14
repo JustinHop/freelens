@@ -16,6 +16,8 @@ import selectedMetricsTimeRangeInjectable from "../cluster/overview/selected-met
 import { ResourceMetricsContext } from "../resource-metrics";
 import { NoMetrics } from "../resource-metrics/no-metrics";
 
+import type { Node } from "@freelensapp/kube-object";
+
 import type { IComputedValue } from "mobx";
 
 import type { LensTheme } from "../../themes/lens-theme";
@@ -28,6 +30,12 @@ interface Dependencies {
   activeTheme: IComputedValue<LensTheme>;
   selectedMetricsTimeRange: SelectedMetricsTimeRange;
 }
+
+export const hasGpu = (node: Node) => {
+  const gpus = node.status?.capacity?.["nvidia.com/gpu"];
+
+  return !!gpus && gpus !== "0";
+};
 
 const convertNodeMetricValuesToChartData = (values: Array<[number, string]>) =>
   values.map(([x, y]) => ({ x: x * 1000, y }));
@@ -51,6 +59,12 @@ const NonInjectedNodeCharts = observer(({ activeTheme, selectedMetricsTimeRange 
     cpuRequests,
     cpuCapacity,
     cpuAllocatableCapacity,
+    gpuUsage,
+    gpuRequests,
+    gpuCapacity,
+    gpuAllocatableCapacity,
+    gpuMemoryUsage,
+    gpuMemoryCapacity,
     podUsage,
     podCapacity,
     fsSize,
@@ -123,6 +137,52 @@ const NonInjectedNodeCharts = observer(({ activeTheme, selectedMetricsTimeRange 
         tooltip: `Memory capacity`,
         borderColor: chartCapacityColor,
         data: convertNodeMetricValuesToChartData(memoryCapacity),
+      },
+    ],
+    GPU: [
+      {
+        id: `${id}-gpuUsage`,
+        label: `Usage`,
+        tooltip: `GPU usage`,
+        borderColor: "#76b900",
+        data: convertNodeMetricValuesToChartData(gpuUsage),
+      },
+      {
+        id: `${id}-gpuRequests`,
+        label: `Requests`,
+        tooltip: `GPU requests`,
+        borderColor: "#30b24d",
+        data: convertNodeMetricValuesToChartData(gpuRequests),
+      },
+      {
+        id: `${id}-gpuAllocatableCapacity`,
+        label: `Allocatable Capacity`,
+        tooltip: `GPU allocatable capacity`,
+        borderColor: "#032b4d",
+        data: convertNodeMetricValuesToChartData(gpuAllocatableCapacity),
+      },
+      {
+        id: `${id}-gpuCapacity`,
+        label: `Capacity`,
+        tooltip: `GPU capacity`,
+        borderColor: chartCapacityColor,
+        data: convertNodeMetricValuesToChartData(gpuCapacity),
+      },
+    ],
+    "GPU Memory": [
+      {
+        id: `${id}-gpuMemoryUsage`,
+        label: `Usage`,
+        tooltip: `GPU memory usage`,
+        borderColor: "#f5a623",
+        data: convertNodeMetricValuesToChartData(gpuMemoryUsage),
+      },
+      {
+        id: `${id}-gpuMemoryCapacity`,
+        label: `Capacity`,
+        tooltip: `GPU memory capacity`,
+        borderColor: chartCapacityColor,
+        data: convertNodeMetricValuesToChartData(gpuMemoryCapacity),
       },
     ],
     Disk: [

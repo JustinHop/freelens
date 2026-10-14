@@ -8,7 +8,7 @@ import { withInjectables } from "@ogre-tools/injectable-react";
 import { observer } from "mobx-react-lite";
 import { TimeRangedResourceMetrics } from "../resource-metrics";
 import nodeMetricsInjectable from "./metrics.injectable";
-import { NodeCharts } from "./node-charts";
+import { hasGpu, NodeCharts } from "./node-charts";
 
 import type { Node } from "@freelensapp/kube-object";
 
@@ -22,7 +22,11 @@ interface Dependencies {
 
 const NonInjectedNodeMetricsDetailsComponent = observer(
   ({ object, metrics }: KubeObjectDetailsProps<Node> & Dependencies) => (
-    <TimeRangedResourceMetrics tabs={["CPU", "Memory", "Disk", "Pods"]} object={object} metrics={metrics}>
+    <TimeRangedResourceMetrics
+      tabs={hasGpu(object) ? ["CPU", "Memory", "Disk", "Pods", "GPU", "GPU Memory"] : ["CPU", "Memory", "Disk", "Pods"]}
+      object={object}
+      metrics={metrics}
+    >
       <NodeCharts />
     </TimeRangedResourceMetrics>
   ),

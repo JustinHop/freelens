@@ -68,6 +68,34 @@
       }
     }
 
+    &.gpu {
+      flex: 0.6;
+      align-self: center;
+      justify-content: right;
+
+      &.sorting {
+        justify-content: left;
+      }
+
+      .LineProgress {
+        color: #76b900;
+      }
+    }
+
+    &.gpuMemory {
+      flex: 0.6;
+      align-self: center;
+      justify-content: right;
+
+      &.sorting {
+        justify-content: left;
+      }
+
+      .LineProgress {
+        color: #f5a623;
+      }
+    }
+
     &.disk {
       flex: 0.6;
       align-self: center;
