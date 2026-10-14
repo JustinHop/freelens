@@ -29,7 +29,16 @@ const clusterMetricNames = [
   "podAllocatableCapacity",
   "fsSize",
   "fsUsage",
+  "gpuUsage",
+  "gpuRequests",
+  "gpuLimits",
+  "gpuCapacity",
+  "gpuAllocatableCapacity",
+  "gpuMemoryUsage",
+  "gpuMemoryCapacity",
 ];
+
+const dcgmMetricNames = ["gpuUsage", "gpuMemoryUsage", "gpuMemoryCapacity"];
 
 const nodeExporterMetricNames = ["memoryUsage", "cpuUsage", "fsSize", "fsUsage"];
 
@@ -80,7 +89,7 @@ describe("cluster metrics node filter in the prometheus providers", () => {
     it.each(clusterMetricNames)("filters %s by a node label of the provider", (metricName) => {
       for (const provider of providers) {
         const query = provider.getQuery(opts, metricName);
-        const labels = nodeLabelsByProviderKind[provider.kind];
+        const labels = dcgmMetricNames.includes(metricName) ? ["Hostname"] : nodeLabelsByProviderKind[provider.kind];
 
         expect(
           labels.some((label) => query.includes(`${label}=~"worker-1|worker-2"`)),

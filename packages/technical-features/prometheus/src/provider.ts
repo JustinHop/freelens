@@ -144,6 +144,26 @@ export function nodeFilterAdditive(opts: Record<string, string>, label: string):
   return opts.nodes ? `,${label}=~"${opts.nodes}"` : "";
 }
 
+/**
+ * Per-pod series of a dcgm-exporter metric. With the exporter's pod mapping on,
+ * the series carry `pod`, `namespace` and `container` of the workload holding the
+ * GPU, but a Prometheus scrape without `honor_labels` renames them to
+ * `exported_pod`, `exported_namespace` and `exported_container`. Both spellings
+ * are queried and the second is renamed back, so the result carries the plain
+ * labels the renderer matches on.
+ */
+export function dcgmPodQuery(metric: string, opts: Record<string, string>): string {
+  const labels = opts.selector.split(",").map((s) => s.trim());
+  const plain = `sum(${metric}{pod=~"${opts.pods}",namespace="${opts.namespace}"}) by (${opts.selector})`;
+  const exported = `sum(${metric}{exported_pod=~"${opts.pods}",exported_namespace="${opts.namespace}"}) by (${labels.map((l) => `exported_${l}`).join(", ")})`;
+  const renamed = labels.reduce(
+    (expr, label) => `label_replace(${expr}, "${label}", "$1", "exported_${label}", "(.*)")`,
+    exported,
+  );
+
+  return `${plain} or ${renamed}`;
+}
+
 export const prometheusProviderInjectionToken = getInjectionToken<PrometheusProvider>({
   id: "prometheus-provider",
 });
