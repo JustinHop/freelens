@@ -8,6 +8,7 @@ import { getInjectable } from "@ogre-tools/injectable";
 import {
   bytesSent,
   createPrometheusProvider,
+  dcgmPodQuery,
   findNamespacedService,
   nodeFilter,
   nodeFilterAdditive,
@@ -46,6 +47,27 @@ export const getLensLikeQueryFor =
             return `sum(kube_node_status_capacity{resource="cpu"${nodeFilterAdditive(opts, "node")}}) by (component)`;
           case "cpuAllocatableCapacity":
             return `sum(kube_node_status_allocatable{resource="cpu"${nodeFilterAdditive(opts, "node")}}) by (component)`;
+          case "gpuUsage": {
+            // ponytail: DCGM's Hostname label is the node name when dcgm-exporter runs with NODE_NAME set (Helm chart and GPU operator do); join through kube_pod_info if that assumption breaks.
+            const nf = nodeFilter(opts, "Hostname");
+            return `sum(DCGM_FI_DEV_GPU_UTIL${nf}) / 100`;
+          }
+          case "gpuRequests":
+            return `sum(kube_pod_container_resource_requests{resource="nvidia_com_gpu"${nodeFilterAdditive(opts, "node")}}) by (component)`;
+          case "gpuLimits":
+            return `sum(kube_pod_container_resource_limits{resource="nvidia_com_gpu"${nodeFilterAdditive(opts, "node")}}) by (component)`;
+          case "gpuCapacity":
+            return `sum(kube_node_status_capacity{resource="nvidia_com_gpu"${nodeFilterAdditive(opts, "node")}}) by (component)`;
+          case "gpuAllocatableCapacity":
+            return `sum(kube_node_status_allocatable{resource="nvidia_com_gpu"${nodeFilterAdditive(opts, "node")}}) by (component)`;
+          case "gpuMemoryUsage": {
+            const nf = nodeFilter(opts, "Hostname");
+            return `sum(DCGM_FI_DEV_FB_USED${nf}) * 1048576`;
+          }
+          case "gpuMemoryCapacity": {
+            const nf = nodeFilter(opts, "Hostname");
+            return `(sum(DCGM_FI_DEV_FB_USED${nf}) + sum(DCGM_FI_DEV_FB_FREE${nf})) * 1048576`;
+          }
           case "podUsage":
             return `sum({__name__=~"kubelet_running_pod_count|kubelet_running_pods"${nodeFilterAdditive(opts, "instance")}})`;
           case "podCapacity":
@@ -78,6 +100,14 @@ export const getLensLikeQueryFor =
             return `sum(kube_node_status_allocatable{resource="cpu"}) by (node)`;
           case "cpuAllocatableCapacity":
             return `sum(kube_node_status_allocatable{resource="cpu"}) by (node)`;
+          case "gpuUsage":
+            return `sum(DCGM_FI_DEV_GPU_UTIL) by (Hostname) / 100`;
+          case "gpuCapacity":
+            return `sum(kube_node_status_allocatable{resource="nvidia_com_gpu"}) by (node)`;
+          case "gpuMemoryUsage":
+            return `sum(DCGM_FI_DEV_FB_USED) by (Hostname) * 1048576`;
+          case "gpuMemoryCapacity":
+            return `(sum(DCGM_FI_DEV_FB_USED) by (Hostname) + sum(DCGM_FI_DEV_FB_FREE) by (Hostname)) * 1048576`;
           case "fsSize":
             return `sum(node_filesystem_size_bytes{mountpoint=~"${opts.mountpoints}"}) by (kubernetes_node)`;
           case "fsUsage":
@@ -98,6 +128,14 @@ export const getLensLikeQueryFor =
             return `sum(kube_pod_container_resource_requests{pod=~"${opts.pods}",resource="memory",namespace="${opts.namespace}"}) by (${opts.selector})`;
           case "memoryLimits":
             return `sum(kube_pod_container_resource_limits{pod=~"${opts.pods}",resource="memory",namespace="${opts.namespace}"}) by (${opts.selector})`;
+          case "gpuUsage":
+            return `(${dcgmPodQuery("DCGM_FI_DEV_GPU_UTIL", opts)}) / 100`;
+          case "gpuMemoryUsage":
+            return `(${dcgmPodQuery("DCGM_FI_DEV_FB_USED", opts)}) * 1048576`;
+          case "gpuRequests":
+            return `sum(kube_pod_container_resource_requests{pod=~"${opts.pods}",resource="nvidia_com_gpu",namespace="${opts.namespace}"}) by (${opts.selector})`;
+          case "gpuLimits":
+            return `sum(kube_pod_container_resource_limits{pod=~"${opts.pods}",resource="nvidia_com_gpu",namespace="${opts.namespace}"}) by (${opts.selector})`;
           case "fsUsage":
             return `sum(container_fs_usage_bytes{container!="POD",container!="",image!="",pod=~"${opts.pods}",namespace="${opts.namespace}"}) by (${opts.selector})`;
           case "fsWrites":
