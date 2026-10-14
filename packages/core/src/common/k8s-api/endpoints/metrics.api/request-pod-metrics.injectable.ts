@@ -23,6 +23,10 @@ export interface PodMetricData {
   cpuLimits: MetricData;
   memoryRequests: MetricData;
   memoryLimits: MetricData;
+  gpuUsage: MetricData;
+  gpuMemoryUsage: MetricData;
+  gpuRequests: MetricData;
+  gpuLimits: MetricData;
 }
 
 type PodMetricKey = keyof PodMetricData;
@@ -51,6 +55,10 @@ const requestPodMetricsInjectable = getInjectable({
           "memoryUsage",
           "memoryRequests",
           "memoryLimits",
+          "gpuUsage",
+          "gpuMemoryUsage",
+          "gpuRequests",
+          "gpuLimits",
           "fsUsage",
           "fsWrites",
           "fsReads",
