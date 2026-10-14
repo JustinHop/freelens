@@ -25,6 +25,13 @@ export interface ClusterMetricData {
   podUsage: MetricData;
   podCapacity: MetricData;
   podAllocatableCapacity: MetricData;
+  gpuUsage: MetricData;
+  gpuRequests: MetricData;
+  gpuLimits: MetricData;
+  gpuCapacity: MetricData;
+  gpuAllocatableCapacity: MetricData;
+  gpuMemoryUsage: MetricData;
+  gpuMemoryCapacity: MetricData;
   fsSize: MetricData;
   fsUsage: MetricData;
 }
@@ -45,6 +52,13 @@ const defaultClusterMetricKeys: ClusterMetricKey[] = [
   "podUsage",
   "podCapacity",
   "podAllocatableCapacity",
+  "gpuUsage",
+  "gpuRequests",
+  "gpuLimits",
+  "gpuCapacity",
+  "gpuAllocatableCapacity",
+  "gpuMemoryUsage",
+  "gpuMemoryCapacity",
 ];
 
 export type RequestClusterMetricsByNodeNames = (

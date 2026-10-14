@@ -15,6 +15,8 @@ import type { RequestMetricsParams } from "./request-metrics.injectable";
 export interface StatefulSetPodMetricData {
   cpuUsage: MetricData;
   memoryUsage: MetricData;
+  gpuUsage: MetricData;
+  gpuMemoryUsage: MetricData;
   fsUsage: MetricData;
   fsWrites: MetricData;
   fsReads: MetricData;
@@ -42,6 +44,8 @@ const requestPodMetricsForStatefulSetsInjectable = getInjectable({
         {
           cpuUsage: opts,
           memoryUsage: opts,
+          gpuUsage: opts,
+          gpuMemoryUsage: opts,
           fsUsage: opts,
           fsWrites: opts,
           fsReads: opts,

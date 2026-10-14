@@ -15,6 +15,8 @@ import type { RequestMetricsParams } from "./request-metrics.injectable";
 export interface DeploymentPodMetricData {
   cpuUsage: MetricData;
   memoryUsage: MetricData;
+  gpuUsage: MetricData;
+  gpuMemoryUsage: MetricData;
   fsUsage: MetricData;
   fsWrites: MetricData;
   fsReads: MetricData;
@@ -44,6 +46,8 @@ const requestPodMetricsForDeploymentsInjectable = getInjectable({
         {
           cpuUsage: opts,
           memoryUsage: opts,
+          gpuUsage: opts,
+          gpuMemoryUsage: opts,
           fsUsage: opts,
           fsWrites: opts,
           fsReads: opts,

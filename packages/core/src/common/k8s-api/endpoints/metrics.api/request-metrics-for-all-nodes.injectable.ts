@@ -16,6 +16,10 @@ export interface NodeMetricData {
   memoryAllocatableCapacity: MetricData;
   cpuUsage: MetricData;
   cpuCapacity: MetricData;
+  gpuUsage: MetricData;
+  gpuCapacity: MetricData;
+  gpuMemoryUsage: MetricData;
+  gpuMemoryCapacity: MetricData;
   fsUsage: MetricData;
   fsSize: MetricData;
 }
@@ -37,6 +41,10 @@ const requestAllNodeMetricsInjectable = getInjectable({
         memoryAllocatableCapacity: opts,
         cpuUsage: opts,
         cpuCapacity: opts,
+        gpuUsage: opts,
+        gpuCapacity: opts,
+        gpuMemoryUsage: opts,
+        gpuMemoryCapacity: opts,
         fsSize: opts,
         fsUsage: opts,
       });
