@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { normalizeMetrics } from "../../../common/k8s-api/endpoints/metrics.api";
 import { podGpuMetricTabs, podMetricTabs, podMetricTabsFor } from "./pod-charts";
 
 import type { MetricData } from "../../../common/k8s-api/endpoints/metrics.api";
@@ -26,6 +27,18 @@ describe("podMetricTabsFor", () => {
     ["the metrics hold no GPU series", { cpuUsage: metricData([{ metric: {}, values: [[1, "1"]] }]) }],
     ["the GPU series is empty", { gpuUsage: metricData([]) }],
   ])("returns the pod tabs when %s", (_name, metrics) => {
+    expect(podMetricTabsFor(metrics)).toBe(podMetricTabs);
+  });
+
+  it("returns the pod tabs for an empty GPU series after the charts normalized it", () => {
+    const metrics = { gpuUsage: metricData([]) };
+
+    expect(podMetricTabsFor(metrics)).toBe(podMetricTabs);
+
+    // PodCharts runs this on every key of the loaded metrics, and it fills an empty result in place.
+    normalizeMetrics(metrics.gpuUsage);
+
+    expect(metrics.gpuUsage.data.result).toEqual([{ metric: {}, values: [] }]);
     expect(podMetricTabsFor(metrics)).toBe(podMetricTabs);
   });
 

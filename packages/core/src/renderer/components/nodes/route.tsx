@@ -255,7 +255,7 @@ class NonInjectedNodesRoute extends React.Component<Dependencies> {
     return { cpu, memory };
   }
 
-  getLastMetricValues(node: Node, metricNames: (keyof NodeMetricData)[]): number[] {
+  getLastMetricValues(node: Node, metricNames: (keyof NodeMetricData)[], missingValue = 0): number[] {
     if (!this.metrics) {
       return [];
     }
@@ -270,9 +270,9 @@ class NonInjectedNodesRoute extends React.Component<Dependencies> {
             nodeName === node || nodeName === instance || nodeName === kubernetes_node || nodeName === Hostname,
         );
 
-        return result ? parseFloat(result.values.slice(-1)[0][1]) : 0;
+        return result ? parseFloat(result.values.slice(-1)[0][1]) : missingValue;
       } catch (e) {
-        return 0;
+        return missingValue;
       }
     });
   }
@@ -435,10 +435,12 @@ class NonInjectedNodesRoute extends React.Component<Dependencies> {
   }
 
   renderGpuUsage(node: Node) {
-    const [usage, capacity] = this.getLastMetricValues(node, ["gpuUsage", "gpuCapacity"]);
-    const tooltipLines = capacity
-      ? [`GPU: ${((usage * 100) / capacity).toFixed(2)}%, ${formatCores(usage)} of ${capacity} GPUs`]
-      : [];
+    // a node without DCGM series has no usage, which is not the same as 0%
+    const [usage, capacity] = this.getLastMetricValues(node, ["gpuUsage", "gpuCapacity"], NaN);
+    const tooltipLines =
+      capacity && Number.isFinite(usage)
+        ? [`GPU: ${((usage * 100) / capacity).toFixed(2)}%, ${formatCores(usage)} of ${capacity} GPUs`]
+        : [];
 
     return this.renderUsage({
       node,

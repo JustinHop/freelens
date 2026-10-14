@@ -26,10 +26,13 @@ export const podMetricTabs: AtLeastOneMetricTab = ["CPU", "Memory", "Network", "
 export const podGpuMetricTabs: MetricsTab[] = ["GPU", "GPU Memory"];
 
 /**
- * The pod metric tabs, with the GPU tabs added when the loaded metrics hold GPU series.
+ * The pod metric tabs, with the GPU tabs added when the loaded metrics hold a GPU series with data points.
+ *
+ * The check looks at the data points rather than at the number of series, because `normalizeMetrics`
+ * pushes an empty placeholder series into an empty result in place when the charts render.
  */
 export function podMetricTabsFor(metrics: { gpuUsage?: MetricData } | null | undefined): AtLeastOneMetricTab {
-  const hasGpuMetrics = metrics?.gpuUsage && !isMetricsEmpty({ gpuUsage: metrics.gpuUsage });
+  const hasGpuMetrics = metrics?.gpuUsage?.data?.result?.some((result) => result.values?.length > 0);
 
   return hasGpuMetrics ? [...podMetricTabs, ...podGpuMetricTabs] : podMetricTabs;
 }

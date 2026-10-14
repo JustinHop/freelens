@@ -150,11 +150,16 @@ export function nodeFilterAdditive(opts: Record<string, string>, label: string):
  * GPU, but a Prometheus scrape without `honor_labels` renames them to
  * `exported_pod`, `exported_namespace` and `exported_container`. Both spellings
  * are queried and the second is renamed back, so the result carries the plain
- * labels the renderer matches on.
+ * labels the renderer matches on. The plain query skips series that also have
+ * `exported_pod`: their `pod` is the exporter's own, which would otherwise show
+ * the totals of every GPU on its node.
  */
 export function dcgmPodQuery(metric: string, opts: Record<string, string>): string {
-  const labels = opts.selector.split(",").map((s) => s.trim());
-  const plain = `sum(${metric}{pod=~"${opts.pods}",namespace="${opts.namespace}"}) by (${opts.selector})`;
+  const labels = (opts.selector ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const plain = `sum(${metric}{pod=~"${opts.pods}",namespace="${opts.namespace}",exported_pod=""}) by (${labels.join(", ")})`;
   const exported = `sum(${metric}{exported_pod=~"${opts.pods}",exported_namespace="${opts.namespace}"}) by (${labels.map((l) => `exported_${l}`).join(", ")})`;
   const renamed = labels.reduce(
     (expr, label) => `label_replace(${expr}, "${label}", "$1", "exported_${label}", "(.*)")`,
